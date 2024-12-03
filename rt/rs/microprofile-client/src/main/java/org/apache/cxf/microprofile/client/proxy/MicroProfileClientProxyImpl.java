@@ -414,10 +414,6 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
                                  MultivaluedMap<ParameterType, Parameter> map) {
         super.handleHeaders(m, params, headers, beanParams, map);
 
-        if (this.configuredHeaders != null) {
-            headers.putAll(this.configuredHeaders);
-        }
-
         try {
             Class<?> declaringClass = m.getDeclaringClass();
             ClientHeaderParam[] clientHeaderAnnosOnInterface = declaringClass
@@ -455,6 +451,12 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
             }
         } catch (Throwable t) {
             throwException(t);
+        }
+
+        if (this.configuredHeaders != null) {
+            for (Map.Entry<String, List<String>> header : this.configuredHeaders.entrySet()) {
+                headers.addAll(header.getKey(), header.getValue());
+            }
         }
     }
 
