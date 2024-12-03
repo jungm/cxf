@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
@@ -55,6 +56,7 @@ import org.apache.cxf.common.util.PropertyUtils;
 import org.apache.cxf.common.util.ReflectionUtil;
 import org.apache.cxf.microprofile.client.CxfTypeSafeClientBuilder;
 import org.apache.cxf.microprofile.client.config.ConfigFacade;
+import org.apache.cxf.microprofile.client.proxy.MicroProfileClientProxyImpl;
 import org.eclipse.microprofile.rest.client.ext.QueryParamStyle;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -130,6 +132,8 @@ public class RestClientBean implements Bean<Object>, PassivationCapable {
         if (builder != null) {
             builder.close();
         }
+
+        ((MicroProfileClientProxyImpl) Proxy.getInvocationHandler(instance)).close();
     }
 
     @Override
