@@ -44,7 +44,7 @@ public class MicroProfileClientFactoryBeanTest {
                 new MicroProfileClientConfigurableImpl<>(RestClientBuilder.newBuilder());
 
         final MicroProfileClientFactoryBean bean = new MicroProfileClientFactoryBean(configurable, 
-                "http://bar", MyClient.class, null, new TLSConfiguration());
+                "http://bar", null, MyClient.class, null, new TLSConfiguration());
         
         final SomeFeature feature = new SomeFeature(true);
         bean.setProvider(feature);
@@ -64,7 +64,7 @@ public class MicroProfileClientFactoryBeanTest {
                 new MicroProfileClientConfigurableImpl<>(RestClientBuilder.newBuilder());
 
         final MicroProfileClientFactoryBean bean = new MicroProfileClientFactoryBean(configurable, 
-                "http://bar", MyClient.class, null, new TLSConfiguration());
+                "http://bar", null, MyClient.class, null, new TLSConfiguration());
         
         final SomeFeature feature = new SomeFeature(false);
         bean.setProvider(feature);

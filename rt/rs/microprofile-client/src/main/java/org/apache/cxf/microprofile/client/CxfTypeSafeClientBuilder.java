@@ -41,6 +41,8 @@ import javax.net.ssl.TrustManagerFactory;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.core.Configurable;
 import jakarta.ws.rs.core.Configuration;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
 import org.apache.cxf.jaxrs.client.ClientProperties;
 import org.apache.cxf.jaxrs.client.spec.TLSConfiguration;
 import org.apache.cxf.microprofile.client.sse.SseMessageBodyReader;
@@ -61,6 +63,7 @@ public class CxfTypeSafeClientBuilder implements RestClientBuilder, Configurable
     private final MicroProfileClientConfigurableImpl<RestClientBuilder> configImpl =
             new MicroProfileClientConfigurableImpl<>(this);
     private TLSConfiguration secConfig = new TLSConfiguration();
+    private MultivaluedMap<String, String> headers = new MultivaluedHashMap<>();
 
     private static Collection<RestClientListener> listeners() {
         ClassLoader threadContextClassLoader;
@@ -86,6 +89,12 @@ public class CxfTypeSafeClientBuilder implements RestClientBuilder, Configurable
     @Override
     public RestClientBuilder baseUri(URI uri) {
         this.baseUri = Objects.requireNonNull(uri).toString();
+        return this;
+    }
+
+    @Override
+    public RestClientBuilder baseUri(String uri) {
+        this.baseUri = uri;
         return this;
     }
 
@@ -145,7 +154,7 @@ public class CxfTypeSafeClientBuilder implements RestClientBuilder, Configurable
         listeners().forEach(l -> l.onNewClient(aClass, this));
 
         MicroProfileClientFactoryBean bean = new MicroProfileClientFactoryBean(configImpl,
-            baseUri, aClass, executorService, secConfig);
+            baseUri, headers, aClass, executorService, secConfig);
         return bean.create(aClass);
     }
 
@@ -281,6 +290,16 @@ public class CxfTypeSafeClientBuilder implements RestClientBuilder, Configurable
         case COMMA_SEPARATED: configImpl.property("expand.query.value.as.collection", true); break;
         default:
         }
+        return this;
+    }
+
+    @Override
+    public RestClientBuilder header(String s, Object o) {
+        if (o == null) {
+            throw new NullPointerException("header value for '%s' must not be null".formatted(s));
+        }
+
+        headers.add(s, Objects.toString(o));
         return this;
     }
 

@@ -24,6 +24,7 @@ import org.apache.cxf.microprofile.client.mock.HeaderCaptureClientRequestFilter;
 import org.apache.cxf.microprofile.client.mock.HeadersFactoryClient;
 import org.apache.cxf.microprofile.client.mock.HeadersOnInterfaceClient;
 import org.apache.cxf.microprofile.client.mock.HeadersOnMethodClient;
+import org.apache.cxf.microprofile.client.mock.MyClient;
 import org.apache.cxf.microprofile.client.mock.MyClientHeadersFactory;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
@@ -87,6 +88,23 @@ public class ClientHeadersTest {
         assertEquals("1eulaVmaraPredaeh", getOutboundHeaders().getFirst("HeaderParam1"));
         assertEquals("cba", getOutboundHeaders().getFirst("IntfHeader1"));
         assertEquals("fed", getOutboundHeaders().getFirst("MethodHeader1"));
-        
+    }
+
+    @Test
+    public void testClientHeadersBuilder() {
+        MyClient client = RestClientBuilder.newBuilder()
+                .baseUri(URI.create("http://localhost/notUsed"))
+                .register(HeaderCaptureClientRequestFilter.class)
+                .header("asdf", "val1")
+                .header("asdf", "val2")
+                .header("stringified", 5)
+                .build(MyClient.class);
+
+        assertEquals(200, client.get().getStatus());
+
+        assertNotNull(getOutboundHeaders());
+        assertEquals("val1", getOutboundHeaders().get("asdf").get(0));
+        assertEquals("val2", getOutboundHeaders().get("asdf").get(1));
+        assertEquals("5", getOutboundHeaders().getFirst("stringified"));
     }
 }

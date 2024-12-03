@@ -30,6 +30,7 @@ import jakarta.ws.rs.client.ClientRequestFilter;
 import jakarta.ws.rs.client.ClientResponseFilter;
 import jakarta.ws.rs.core.Configurable;
 import jakarta.ws.rs.core.Configuration;
+import jakarta.ws.rs.core.MultivaluedMap;
 import org.apache.cxf.common.util.ClassHelper;
 import org.apache.cxf.common.util.PropertyUtils;
 import org.apache.cxf.configuration.jsse.TLSClientParameters;
@@ -56,11 +57,13 @@ public class MicroProfileClientFactoryBean extends JAXRSClientFactoryBean {
     private final Configuration configuration;
     private ClassLoader proxyLoader;
     private boolean inheritHeaders;
+    private MultivaluedMap<String, String> headers;
     private ExecutorService executorService;
     private TLSConfiguration secConfig;
 
     public MicroProfileClientFactoryBean(MicroProfileClientConfigurableImpl<RestClientBuilder> configurable,
-                                         String baseUri, Class<?> aClass, ExecutorService executorService,
+                                         String baseUri, MultivaluedMap<String, String> headers,
+                                         Class<?> aClass, ExecutorService executorService,
                                          TLSConfiguration secConfig) {
         super(new MicroProfileServiceFactoryBean());
         this.configurable = configurable;
@@ -69,6 +72,7 @@ public class MicroProfileClientFactoryBean extends JAXRSClientFactoryBean {
         this.executorService = (executorService == null) ? Utils.defaultExecutorService() : executorService; 
         this.secConfig = secConfig;
         super.setAddress(baseUri);
+        this.headers = headers;
         super.setServiceClass(aClass);
         super.setProviderComparator(comparator);
         super.setProperties(this.configuration.getProperties());
@@ -132,10 +136,10 @@ public class MicroProfileClientFactoryBean extends JAXRSClientFactoryBean {
         CDIInterceptorWrapper interceptorWrapper = CDIInterceptorWrapper.createWrapper(getServiceClass());
         if (actualState == null) {
             return new MicroProfileClientProxyImpl(URI.create(getAddress()), proxyLoader, cri, isRoot,
-                    inheritHeaders, executorService, configuration, interceptorWrapper, secConfig, varValues);
+                    inheritHeaders, headers, executorService, configuration, interceptorWrapper, secConfig, varValues);
         } else {
             return new MicroProfileClientProxyImpl(actualState, proxyLoader, cri, isRoot,
-                    inheritHeaders, executorService, configuration, interceptorWrapper, secConfig, varValues);
+                    inheritHeaders, headers, executorService, configuration, interceptorWrapper, secConfig, varValues);
         }
     }
     

@@ -107,15 +107,18 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
         new WeakHashMap<>();
     private List<Instance<?>> cdiInstances = new LinkedList<>();
     private final TLSConfiguration tlsConfig;
+    private final MultivaluedMap<String, String> configuredHeaders;
 
     //CHECKSTYLE:OFF
     @SuppressWarnings("PMD.ExcessiveParameterList")
-    public MicroProfileClientProxyImpl(URI baseURI, ClassLoader loader, ClassResourceInfo cri,
-                                       boolean isRoot, boolean inheritHeaders, ExecutorService executorService,
-                                       Configuration configuration, CDIInterceptorWrapper interceptorWrapper,
-                                       TLSConfiguration tlsConfig, Object... varValues) {
+    public MicroProfileClientProxyImpl(URI baseURI, ClassLoader loader, ClassResourceInfo cri, boolean isRoot,
+                                       boolean inheritHeaders, MultivaluedMap<String, String> configuredHeaders,
+                                       ExecutorService executorService, Configuration configuration,
+                                       CDIInterceptorWrapper interceptorWrapper, TLSConfiguration tlsConfig,
+                                       Object... varValues) {
         super(new LocalClientState(baseURI, configuration.getProperties()), loader, cri,
             isRoot, inheritHeaders, varValues);
+        this.configuredHeaders = configuredHeaders;
         this.interceptorWrapper = interceptorWrapper;
         this.tlsConfig = tlsConfig;
         
@@ -128,10 +131,13 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
 
     @SuppressWarnings("PMD.ExcessiveParameterList")
     public MicroProfileClientProxyImpl(ClientState initialState, ClassLoader loader, ClassResourceInfo cri,
-                                       boolean isRoot, boolean inheritHeaders, ExecutorService executorService,
-                                       Configuration configuration, CDIInterceptorWrapper interceptorWrapper,
-                                       TLSConfiguration tlsConfig, Object... varValues) {
+                                       boolean isRoot, boolean inheritHeaders,
+                                       MultivaluedMap<String, String> configuredHeaders,
+                                       ExecutorService executorService, Configuration configuration,
+                                       CDIInterceptorWrapper interceptorWrapper, TLSConfiguration tlsConfig,
+                                       Object... varValues) {
         super(initialState, loader, cri, isRoot, inheritHeaders, varValues);
+        this.configuredHeaders = configuredHeaders;
         this.interceptorWrapper = interceptorWrapper;
         this.tlsConfig = tlsConfig;
         init(executorService, configuration);
@@ -407,6 +413,10 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
                                  List<Parameter> beanParams,
                                  MultivaluedMap<ParameterType, Parameter> map) {
         super.handleHeaders(m, params, headers, beanParams, map);
+
+        if (this.configuredHeaders != null) {
+            headers.putAll(this.configuredHeaders);
+        }
 
         try {
             Class<?> declaringClass = m.getDeclaringClass();
