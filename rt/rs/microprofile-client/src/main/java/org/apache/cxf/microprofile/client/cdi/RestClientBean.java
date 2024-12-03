@@ -28,7 +28,6 @@ import java.net.URL;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -45,12 +44,10 @@ import javax.net.ssl.HostnameVerifier;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.Dependent;
 import jakarta.enterprise.context.spi.CreationalContext;
-import jakarta.enterprise.inject.Default;
 import jakarta.enterprise.inject.spi.Bean;
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.enterprise.inject.spi.InjectionPoint;
 import jakarta.enterprise.inject.spi.PassivationCapable;
-import jakarta.enterprise.util.AnnotationLiteral;
 import jakarta.ws.rs.Priorities;
 import org.apache.cxf.common.classloader.ClassLoaderUtils;
 import org.apache.cxf.common.logging.LogUtils;
@@ -81,7 +78,6 @@ public class RestClientBean implements Bean<Object>, PassivationCapable {
     public static final String REST_PROXY_ADDRESS_FORMAT = "%s/mp-rest/proxyAddress";
     public static final String QUERY_PARAM_STYLE_FORMAT = "%s/mp-rest/queryParamStyle";
     private static final Logger LOG = LogUtils.getL7dLogger(RestClientBean.class);
-    private static final Default DEFAULT_LITERAL = new DefaultLiteral();
     private final Class<?> clientInterface;
     private final Class<? extends Annotation> scope;
     private final BeanManager beanManager;
@@ -143,7 +139,7 @@ public class RestClientBean implements Bean<Object>, PassivationCapable {
 
     @Override
     public Set<Annotation> getQualifiers() {
-        return new HashSet<>(Arrays.asList(DEFAULT_LITERAL, RestClient.RestClientLiteral.LITERAL));
+        return new HashSet<>(List.of(RestClient.RestClientLiteral.LITERAL));
     }
 
     @Override
@@ -254,11 +250,6 @@ public class RestClientBean implements Bean<Object>, PassivationCapable {
     private static int getPriorityFromClass(Class<?> providerClass, int defaultValue) {
         Priority p = providerClass.getAnnotation(Priority.class);
         return p != null ? p.value() : defaultValue;
-    }
-
-    private static final class DefaultLiteral extends AnnotationLiteral<Default> implements Default {
-        private static final long serialVersionUID = 1L;
-
     }
 
     private void setTimeouts(CxfTypeSafeClientBuilder builder) {
