@@ -348,12 +348,10 @@ public class JAXRSClientFactoryBean extends AbstractJAXRSFactoryBean {
     protected ClientProxyImpl createClientProxy(ClassResourceInfo cri, boolean isRoot,
                                                 ClientState actualState, Object[] varValues) {
         if (actualState == null) {
-            return new ClientProxyImpl(URI.create(getAddress()), proxyLoader, cri, isRoot,
-                                    inheritHeaders, getProperties(), varValues);
-        } else {
-            return new ClientProxyImpl(actualState, proxyLoader, cri, isRoot,
-                                    inheritHeaders, varValues);
+            actualState = new LocalClientState(URI.create(getAddress()), getProperties());
         }
+
+        return new ClientProxyImpl(actualState, proxyLoader, cri, isRoot, inheritHeaders, this, varValues);
     }
 
     protected ConduitSelector getConduitSelector(Endpoint ep) {

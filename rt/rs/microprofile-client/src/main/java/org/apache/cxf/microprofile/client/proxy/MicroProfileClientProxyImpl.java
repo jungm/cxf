@@ -48,8 +48,8 @@ import org.apache.cxf.helpers.CastUtils;
 import org.apache.cxf.interceptor.Interceptor;
 import org.apache.cxf.jaxrs.client.ClientProxyImpl;
 import org.apache.cxf.jaxrs.client.ClientState;
+import org.apache.cxf.jaxrs.client.JAXRSClientFactoryBean;
 import org.apache.cxf.jaxrs.client.JaxrsClientCallback;
-import org.apache.cxf.jaxrs.client.LocalClientState;
 import org.apache.cxf.jaxrs.client.spec.TLSConfiguration;
 import org.apache.cxf.jaxrs.model.ClassResourceInfo;
 import org.apache.cxf.jaxrs.model.OperationResourceInfo;
@@ -85,7 +85,7 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
     };
 
     private static final Method JAXRS_UTILS_GET_CURRENT_MESSAGE_METHOD;
-    
+
     static {
         Method m;
         try {
@@ -103,7 +103,7 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
 
     private final CDIInterceptorWrapper interceptorWrapper;
     private Object objectInstance;
-    private Map<Class<ClientHeadersFactory>, ProviderInfo<ClientHeadersFactory>> clientHeaderFactories = 
+    private Map<Class<ClientHeadersFactory>, ProviderInfo<ClientHeadersFactory>> clientHeaderFactories =
         new WeakHashMap<>();
     private List<Instance<?>> cdiInstances = new LinkedList<>();
     private final TLSConfiguration tlsConfig;
@@ -111,32 +111,14 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
 
     //CHECKSTYLE:OFF
     @SuppressWarnings("PMD.ExcessiveParameterList")
-    public MicroProfileClientProxyImpl(URI baseURI, ClassLoader loader, ClassResourceInfo cri, boolean isRoot,
-                                       boolean inheritHeaders, MultivaluedMap<String, String> configuredHeaders,
-                                       ExecutorService executorService, Configuration configuration,
-                                       CDIInterceptorWrapper interceptorWrapper, TLSConfiguration tlsConfig,
-                                       Object... varValues) {
-        super(new LocalClientState(baseURI, configuration.getProperties()), loader, cri,
-            isRoot, inheritHeaders, varValues);
-        this.configuredHeaders = configuredHeaders;
-        this.interceptorWrapper = interceptorWrapper;
-        this.tlsConfig = tlsConfig;
-        
-        if (executorService == null) {
-            throw new IllegalArgumentException("The executorService is required and must be provided");
-        }
-        
-        init(executorService, configuration);
-    }
-
-    @SuppressWarnings("PMD.ExcessiveParameterList")
     public MicroProfileClientProxyImpl(ClientState initialState, ClassLoader loader, ClassResourceInfo cri,
                                        boolean isRoot, boolean inheritHeaders,
                                        MultivaluedMap<String, String> configuredHeaders,
                                        ExecutorService executorService, Configuration configuration,
                                        CDIInterceptorWrapper interceptorWrapper, TLSConfiguration tlsConfig,
+                                       JAXRSClientFactoryBean factoryBean,
                                        Object... varValues) {
-        super(initialState, loader, cri, isRoot, inheritHeaders, varValues);
+        super(initialState, loader, cri, isRoot, inheritHeaders, factoryBean, varValues);
         this.configuredHeaders = configuredHeaders;
         this.interceptorWrapper = interceptorWrapper;
         this.tlsConfig = tlsConfig;
@@ -221,8 +203,8 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
                         }
                     }
                     if (LOG.isLoggable(Level.FINEST)) {
-                        LOG.log(Level.FINEST, "ResponseExceptionMapper, " + mapper.getClass().getName() + ", handles " 
-                            + "response, but client method does not declare it's Throwable type, " 
+                        LOG.log(Level.FINEST, "ResponseExceptionMapper, " + mapper.getClass().getName() + ", handles "
+                            + "response, but client method does not declare it's Throwable type, "
                             + t.getClass().getName());
                     }
                 }
@@ -239,24 +221,24 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
         }
         return returnType;
     }
-    
+
     @Override
     protected Type getGenericReturnType(Class<?> serviceCls, Method method, Class<?> returnType) {
         final Type genericReturnType = super.getGenericReturnType(serviceCls, method, returnType);
-        
+
         if (genericReturnType instanceof ParameterizedType) {
             final ParameterizedType pt = (ParameterizedType)genericReturnType;
             if (CompletionStage.class.isAssignableFrom(InjectionUtils.getRawType(pt))) {
                 final Type[] actualTypeArguments = pt.getActualTypeArguments();
                 if (actualTypeArguments.length > 0 && actualTypeArguments[0] instanceof ParameterizedType) {
-                    return InjectionUtils.processGenericTypeIfNeeded(serviceCls, returnType, 
+                    return InjectionUtils.processGenericTypeIfNeeded(serviceCls, returnType,
                         (ParameterizedType)actualTypeArguments[0]);
                 } else {
                     return returnType;
                 }
             }
         }
-        
+
         return genericReturnType;
     }
 
@@ -414,17 +396,27 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
                                  MultivaluedMap<ParameterType, Parameter> map) {
         super.handleHeaders(m, params, headers, beanParams, map);
 
+        handleAnnotationBasedHeaders(m, headers);
+
+        if (this.configuredHeaders != null) {
+            for (Map.Entry<String, List<String>> header : this.configuredHeaders.entrySet()) {
+                headers.addAll(header.getKey(), header.getValue());
+            }
+        }
+    }
+
+    private void handleAnnotationBasedHeaders(Method m, MultivaluedMap<String, String> headers) {
         try {
             Class<?> declaringClass = m.getDeclaringClass();
             ClientHeaderParam[] clientHeaderAnnosOnInterface = declaringClass
-                .getAnnotationsByType(ClientHeaderParam.class);
+                    .getAnnotationsByType(ClientHeaderParam.class);
             ClientHeaderParam[] clientHeaderAnnosOnMethod = m.getAnnotationsByType(ClientHeaderParam.class);
             RegisterClientHeaders headersFactoryAnno = declaringClass.getAnnotation(RegisterClientHeaders.class);
             if (clientHeaderAnnosOnInterface.length < 1 && clientHeaderAnnosOnMethod.length < 1
-                && headersFactoryAnno == null) {
+                    && headersFactoryAnno == null) {
                 return;
             }
-            
+
             for (ClientHeaderParam methodAnno : clientHeaderAnnosOnMethod) {
                 String headerName = methodAnno.name();
                 if (!headers.containsKey(headerName)) {
@@ -446,23 +438,12 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
 
             if (headersFactoryAnno != null) {
                 Class<ClientHeadersFactory> headersFactoryClass = (Class<ClientHeadersFactory>)
-                                                                  headersFactoryAnno.value();
+                        headersFactoryAnno.value();
                 mergeHeaders(headersFactoryClass, headers);
             }
         } catch (Throwable t) {
             throwException(t);
         }
-
-        if (this.configuredHeaders != null) {
-            for (Map.Entry<String, List<String>> header : this.configuredHeaders.entrySet()) {
-                headers.addAll(header.getKey(), header.getValue());
-            }
-        }
-    }
-
-    private <T> T mapInstance(Instance<T> instance) {
-        cdiInstances.add(instance);
-        return instance.getValue();
     }
 
     private void mergeHeaders(Class<ClientHeadersFactory> factoryCls, MultivaluedMap<String, String> existingHeaders) {
@@ -495,6 +476,11 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
                 LOG.log(Level.FINEST, "Caught exception getting JAX-RS incoming headers", t);
             }
         }
+    }
+
+    private <T> T mapInstance(Instance<T> instance) {
+        cdiInstances.add(instance);
+        return instance.getValue();
     }
 
     @Override
@@ -532,7 +518,7 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
             }
         }
     }
-    
+
     private void throwException(Throwable t) {
         if (t instanceof Error) {
             throw (Error) t;
@@ -561,7 +547,7 @@ public class MicroProfileClientProxyImpl extends ClientProxyImpl {
         cdiInstances.forEach(Instance::release);
         super.close();
     }
-    
+
     public TLSConfiguration getTlsConfig() {
         return tlsConfig;
     }

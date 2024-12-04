@@ -40,6 +40,7 @@ import org.apache.cxf.jaxrs.client.ClientProperties;
 import org.apache.cxf.jaxrs.client.ClientProxyImpl;
 import org.apache.cxf.jaxrs.client.ClientState;
 import org.apache.cxf.jaxrs.client.JAXRSClientFactoryBean;
+import org.apache.cxf.jaxrs.client.LocalClientState;
 import org.apache.cxf.jaxrs.client.spec.TLSConfiguration;
 import org.apache.cxf.jaxrs.model.ClassResourceInfo;
 import org.apache.cxf.jaxrs.model.FilterProviderInfo;
@@ -133,14 +134,14 @@ public class MicroProfileClientFactoryBean extends JAXRSClientFactoryBean {
     @Override
     protected ClientProxyImpl createClientProxy(ClassResourceInfo cri, boolean isRoot,
                                                 ClientState actualState, Object[] varValues) {
-        CDIInterceptorWrapper interceptorWrapper = CDIInterceptorWrapper.createWrapper(getServiceClass());
         if (actualState == null) {
-            return new MicroProfileClientProxyImpl(URI.create(getAddress()), proxyLoader, cri, isRoot,
-                    inheritHeaders, headers, executorService, configuration, interceptorWrapper, secConfig, varValues);
-        } else {
-            return new MicroProfileClientProxyImpl(actualState, proxyLoader, cri, isRoot,
-                    inheritHeaders, headers, executorService, configuration, interceptorWrapper, secConfig, varValues);
+            state = new LocalClientState(URI.create(getAddress()), configuration.getProperties());
         }
+
+        CDIInterceptorWrapper interceptorWrapper = CDIInterceptorWrapper.createWrapper(getServiceClass());
+        return new MicroProfileClientProxyImpl(actualState, proxyLoader, cri, isRoot,
+                inheritHeaders, headers, executorService, configuration,
+                interceptorWrapper, secConfig, this, varValues);
     }
     
     @Override

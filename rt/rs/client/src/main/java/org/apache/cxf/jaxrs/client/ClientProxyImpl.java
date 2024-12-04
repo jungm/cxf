@@ -112,39 +112,26 @@ public class ClientProxyImpl extends AbstractClient implements
     protected ClassLoader proxyLoader;
     protected boolean inheritHeaders;
     protected boolean isRoot;
+    protected Object[] initialValues;
     protected Map<String, Object> valuesMap = Collections.emptyMap();
     protected BodyWriter bodyWriter = new BodyWriter();
     protected Client proxy;
-    public ClientProxyImpl(URI baseURI,
-                           ClassLoader loader,
-                           ClassResourceInfo cri,
-                           boolean isRoot,
-                           boolean inheritHeaders,
-                           Object... varValues) {
-        this(baseURI, loader, cri, isRoot, inheritHeaders, Collections.emptyMap(), varValues);
-    }
-
-    public ClientProxyImpl(URI baseURI,
-            ClassLoader loader,
-            ClassResourceInfo cri,
-            boolean isRoot,
-            boolean inheritHeaders,
-            Map<String, Object> properties,
-            Object... varValues) {
-        this(new LocalClientState(baseURI, properties), loader, cri, isRoot, inheritHeaders, varValues);
-    }
+    protected JAXRSClientFactoryBean factoryBean;
 
     public ClientProxyImpl(ClientState initialState,
                            ClassLoader loader,
                            ClassResourceInfo cri,
                            boolean isRoot,
                            boolean inheritHeaders,
+                           JAXRSClientFactoryBean factoryBean,
                            Object... varValues) {
         super(initialState);
         this.proxyLoader = loader;
         this.cri = cri;
         this.isRoot = isRoot;
         this.inheritHeaders = inheritHeaders;
+        this.initialValues = varValues;
+        this.factoryBean = factoryBean;
         initValuesMap(varValues);
         cfg.getInInterceptors().add(new ClientAsyncResponseInterceptor());
     }
@@ -317,8 +304,8 @@ public class ClientProxyImpl extends AbstractClient implements
 
             ClientState newState = getState().newState(uri, subHeaders,
                  getTemplateParametersMap(ori.getURITemplate(), pathParams));
-            ClientProxyImpl proxyImpl =
-                new ClientProxyImpl(newState, proxyLoader, subCri, false, inheritHeaders);
+
+            ClientProxyImpl proxyImpl = factoryBean.createClientProxy(subCri, false, newState, initialValues);
             proxyImpl.setConfiguration(getConfiguration());
             return JAXRSClientFactory.createProxy(m.getReturnType(), proxyLoader, proxyImpl);
         }
